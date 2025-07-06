@@ -6,12 +6,11 @@ use soroban_sdk::{
     Address, Env, String, Symbol,
 };
 
-// Mock token contract for testing
 mod token {
     use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, Symbol, panic_with_error};
 
     #[contracttype]
-    pub enum DataKey {
+    pub enum DataKey {  
         Balance(Address),
         TotalSupply,
         Allowance(Address, Address),
@@ -64,7 +63,6 @@ mod token {
     }
 }
 
-// Test helper struct
 struct TestSetup {
     env: Env,
     vault_id: Address,
@@ -130,7 +128,6 @@ fn test_initialize() {
 fn test_initialize_twice() {
     let setup = TestSetup::new();
     setup.initialize_vault("Test Vault", "TVAULT", 18);
-    // Should panic when trying to initialize again
     setup.initialize_vault("Test Vault 2", "TVAULT2", 18);
 }
 
@@ -143,11 +140,9 @@ fn test_erc20_functionality() {
     setup.initialize_token(1_000_000);
     setup.mint_tokens(&setup.user, 1000);
     
-    // Test initial balances
     assert_eq!(client.balance_of(&setup.user), 0);
     assert_eq!(client.balance_of(&setup.user2), 0);
     
-    // Test deposit to get some vault tokens
     setup.env.mock_all_auths();
     let shares = client.deposit(&100, &setup.user);
     
@@ -155,18 +150,15 @@ fn test_erc20_functionality() {
     assert_eq!(client.balance_of(&setup.user), shares);
     assert_eq!(client.total_supply(), shares);
     
-    // Test transfer
     setup.env.mock_all_auths();
     assert!(client.transfer(&setup.user, &setup.user2, &50));
     assert_eq!(client.balance_of(&setup.user), shares - 50);
     assert_eq!(client.balance_of(&setup.user2), 50);
     
-    // Test approve and allowance
     setup.env.mock_all_auths();
     assert!(client.approve(&setup.user, &setup.user2, &25));
     assert_eq!(client.allowance(&setup.user, &setup.user2), 25);
     
-    // Test transfer_from
     setup.env.mock_all_auths();
     assert!(client.transfer_from(&setup.user2, &setup.user, &setup.user2, &25));
     assert_eq!(client.balance_of(&setup.user), shares - 75);
@@ -185,14 +177,12 @@ fn test_vault_deposit() {
     
     setup.env.mock_all_auths();
     
-    // First deposit - should get 1:1 ratio
     let shares = client.deposit(&100, &setup.user);
     assert_eq!(shares, 100);
     assert_eq!(client.balance_of(&setup.user), 100);
     assert_eq!(client.total_supply(), 100);
     assert_eq!(client.total_assets(), 100);
     
-    // Second deposit - should still get 1:1 ratio
     let shares2 = client.deposit(&50, &setup.user);
     assert_eq!(shares2, 50);
     assert_eq!(client.balance_of(&setup.user), 150);
@@ -211,7 +201,6 @@ fn test_vault_mint() {
     
     setup.env.mock_all_auths();
     
-    // Mint 100 shares
     let assets = client.mint(&100, &setup.user);
     assert_eq!(assets, 100); // 1:1 ratio initially
     assert_eq!(client.balance_of(&setup.user), 100);
@@ -230,10 +219,8 @@ fn test_vault_withdraw() {
     
     setup.env.mock_all_auths();
     
-    // Deposit first
     client.deposit(&200, &setup.user);
     
-    // Withdraw 50 assets
     let shares_burned = client.withdraw(&50, &setup.user2, &setup.user);
     assert_eq!(shares_burned, 50); // 1:1 ratio
     assert_eq!(client.balance_of(&setup.user), 150);
@@ -252,10 +239,8 @@ fn test_vault_redeem() {
     
     setup.env.mock_all_auths();
     
-    // Deposit first
     client.deposit(&200, &setup.user);
     
-    // Redeem 50 shares
     let assets_received = client.redeem(&50, &setup.user2, &setup.user);
     assert_eq!(assets_received, 50); // 1:1 ratio
     assert_eq!(client.balance_of(&setup.user), 150);
@@ -274,11 +259,9 @@ fn test_conversion_functions() {
     
     setup.env.mock_all_auths();
     
-    // Initially, conversion should be 1:1
     assert_eq!(client.convert_to_shares(&100), 100);
     assert_eq!(client.convert_to_assets(&100), 100);
     
-    // After deposit, should still be 1:1
     client.deposit(&200, &setup.user);
     assert_eq!(client.convert_to_shares(&100), 100);
     assert_eq!(client.convert_to_assets(&100), 100);
@@ -294,14 +277,12 @@ fn test_preview_functions() {
     setup.mint_tokens(&setup.user, 1000);
     
     setup.env.mock_all_auths();
-    
-    // Test preview functions before any deposits
+
     assert_eq!(client.preview_deposit(&100), 100);
     assert_eq!(client.preview_mint(&100), 100);
     assert_eq!(client.preview_withdraw(&100), 100);
     assert_eq!(client.preview_redeem(&100), 100);
     
-    // After deposit, previews should still work
     client.deposit(&200, &setup.user);
     assert_eq!(client.preview_deposit(&100), 100);
     assert_eq!(client.preview_mint(&100), 100);
@@ -320,13 +301,11 @@ fn test_max_functions() {
     
     setup.env.mock_all_auths();
     
-    // Test max functions
     assert_eq!(client.max_deposit(&setup.user), i128::MAX);
     assert_eq!(client.max_mint(&setup.user), i128::MAX);
     assert_eq!(client.max_withdraw(&setup.user), 0); // No shares yet
     assert_eq!(client.max_redeem(&setup.user), 0); // No shares yet
     
-    // After deposit
     client.deposit(&200, &setup.user);
     assert_eq!(client.max_withdraw(&setup.user), 200);
     assert_eq!(client.max_redeem(&setup.user), 200);
@@ -372,10 +351,8 @@ fn test_transfer_insufficient_balance() {
     
     setup.env.mock_all_auths();
     
-    // Deposit some tokens
     client.deposit(&100, &setup.user);
     
-    // Try to transfer more than balance
     client.transfer(&setup.user, &setup.user2, &200);
 }
 
@@ -391,13 +368,10 @@ fn test_transfer_from_insufficient_allowance() {
     
     setup.env.mock_all_auths();
     
-    // Deposit some tokens
     client.deposit(&100, &setup.user);
     
-    // Approve less than transfer amount
     client.approve(&setup.user, &setup.user2, &50);
     
-    // Try to transfer more than allowance
     client.transfer_from(&setup.user2, &setup.user, &setup.user2, &100);
 }
 
@@ -412,13 +386,11 @@ fn test_events() {
     
     setup.env.mock_all_auths();
     
-    // Test deposit event
     client.deposit(&100, &setup.user);
     
     let events = setup.env.events().all();
     assert!(events.len() > 0);
     
-    // Test transfer event
     client.transfer(&setup.user, &setup.user2, &50);
     
     let events = setup.env.events().all();
